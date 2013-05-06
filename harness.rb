@@ -7,15 +7,24 @@ class Command
     "unsuccessful" =>  "failed"
   }
 
+  ResultExt = ".result"
+
   def description() "" end
   def options() nil end
   def run() end
 
-  def get_files(path) Dir.glob(path + '/*') end
-  def get_unclassified() get_files(Tests["unclassified"]) end
-  def get_successful() get_files(Tests["successful"]) end
-  def get_unsuccessful() get_files(Tests["unsuccessful"]) end
-  def get_all() get_unclassified() + get_successful() + get_unsuccessful() end
+  def get_tests(path) Dir.glob(path + '/*').select{|f| File.extname(f) != ResultExt} end
+  def get_unrun()
+    get_tests(Tests["unclassified"]).select{|f| not File.file?(get_file_result(f))}
+  end
+  def get_unclassified()
+    get_tests(Tests["unclassified"]).select{|f| File.file?(get_file_result(f))}
+  end
+  def get_successful() get_tests(Tests["successful"]) end
+  def get_unsuccessful() get_tests(Tests["unsuccessful"]) end
+  def get_all() get_unrun() + get_unclassified() + get_successful() + get_unsuccessful() end
+
+  def get_file_result(path) path + ResultExt end
 end
 
 class CommandResults < Command
@@ -32,10 +41,45 @@ class CommandResults < Command
 
   def run(args, commands)
     verbose = args[1] == "-v"
+    print_results_for("Unrun Tests", get_unrun(), verbose)
     print_results_for("Unclassified Tests", get_unclassified(), verbose)
     print_results_for("Successful Tests", get_successful(), verbose)
     print_results_for("Unsuccessful Tests", get_unsuccessful(), verbose)
     printf "Total (%d)\n", get_all().length
+  end
+end
+
+class CommandClassify < Command
+  def description()
+    "Classify a result.\n" +
+      "   ex: classify success <file>\n" +
+      "   ex: classify success"
+  end
+  def options() {
+    "success" => "Mark test successful.",
+    "failed" => "Mark test failed."
+  }
+  end
+
+  def run(args, commands)
+    case
+    when args[1] == "success"
+      puts "Marking tests as successful..."
+    when args[1] == "failed"
+      puts "Marking tests as successful..."
+    else
+      puts "Please specify success or failed."
+      return
+    end
+    if args[2].nil?
+      files = get_unclassified()
+    else
+      files = args.drop 2
+    end
+    tests.select{|t|
+      puts t
+      # TODO
+    }
   end
 end
 
@@ -45,6 +89,8 @@ class CommandRun < Command
   def options() {
     "all" => "Run all the tests.",
     "failed" => "Run just the failed tests.",
+    "unclassified" => "Run just the failed tests.",
+    "new" => "Run just the new tests (default)."
   }
   end
 
@@ -56,14 +102,19 @@ class CommandRun < Command
     when args[1] == "failed"
       puts "Running failed tests..."
       tests = get_unsuccessful()
-    else
+    when args[1] == "unclassified"
       puts "Running unclassified tests..."
       tests = get_unclassified()
+    else
+      puts "Running new tests..."
+      tests = get_unrun()
     end
     tests.select{|t|
       puts t
       result = eval_script t, nil
       puts result
+      # TODO -- check result
+      # TODO -- write out result
     }
     puts "Done."
   end
@@ -71,6 +122,16 @@ class CommandRun < Command
   def eval_script filename, arguments
     proc = Proc.new {}
     eval(File.read(filename), proc.binding, filename)
+  end
+
+  def check_result filename
+    # TODO
+  end
+
+  def write_result filename, result
+    output = File.open(get_file_result(filename))
+    output << result
+    output.close
   end
 end
 
@@ -90,6 +151,7 @@ end
 
 class Harness
   Commands = {
+    "classify" => CommandClassify.new(),
     "run" => CommandRun.new(),
     "results" => CommandResults.new(),
     "help"    => CommandHelp.new()
