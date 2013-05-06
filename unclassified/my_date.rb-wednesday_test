@@ -1,7 +1,1 @@
-run "files/my_date.rb 5 1 2013"
-expect """
-Day of week: Wednesday
-Week of year: 18
-Day of year: 1
-Julian date: 2456414
-"""
+%x( files/my_date.rb 5 1 2013 )

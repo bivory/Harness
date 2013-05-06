@@ -7,6 +7,10 @@ class Command
     "unsuccessful" =>  "failed"
   }
 
+  def description() "" end
+  def options() nil end
+  def run() end
+
   def get_files(path) Dir.glob(path + '/*') end
   def get_unclassified() get_files(Tests["unclassified"]) end
   def get_successful() get_files(Tests["successful"]) end
@@ -16,6 +20,7 @@ end
 
 class CommandResults < Command
   def description() "Print the test results." end
+  def options() {"-v" => "Verbose file printing."} end
 
   def print_results_for(title, files, verbose)
     printf "%s (%d)\n", title, files.length
@@ -34,22 +39,61 @@ class CommandResults < Command
   end
 end
 
+class CommandRun < Command
+  def description() "Run the unclassified tests." end
+
+  def options() {
+    "all" => "Run all the tests.",
+    "failed" => "Run just the failed tests.",
+  }
+  end
+
+  def run(args, commands)
+    case
+    when args[1] == "all"
+      puts "Running all tests..."
+      tests = get_all()
+    when args[1] == "failed"
+      puts "Running failed tests..."
+      tests = get_unsuccessful()
+    else
+      puts "Running unclassified tests..."
+      tests = get_unclassified()
+    end
+    tests.select{|t|
+      puts t
+      result = eval_script t, nil
+      puts result
+    }
+    puts "Done."
+  end
+
+  def eval_script filename, arguments
+    proc = Proc.new {}
+    eval(File.read(filename), proc.binding, filename)
+  end
+end
+
 class CommandHelp < Command
   def description() "Print this help message." end
   def run(args, commands)
     puts "=== VALID HARNESS COMMANDS ==="
-    commands.each{|k,v| puts k + ": " + v.description()}
+    commands.each{|k,v|
+      puts k + ": " + v.description()
+      options = v.options()
+      unless options.nil?
+        options.each{|opt, descr| puts "\t" + opt + ": " + descr}
+      end
+    }
   end
 end
 
 class Harness
   Commands = {
+    "run" => CommandRun.new(),
     "results" => CommandResults.new(),
     "help"    => CommandHelp.new()
   }
-
-  def initialize()
-  end
 
   def run(args)
     command = Commands[args[0]]
