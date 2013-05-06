@@ -1,0 +1,10 @@
+# Mac files
+.DS_Store
+
+# vim swap
+*.swp
+*.swo
+
+# auto generation
+temp/
+
