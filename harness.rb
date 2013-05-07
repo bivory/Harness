@@ -1,13 +1,22 @@
 #!/usr/bin/env ruby
 
+require "date"
+
 class Command
   Tests = {
-    "unclassified" => "unclassified",
-    "successful"  => "successful",
-    "unsuccessful" =>  "failed"
+    "unclassified" => "tests/unclassified",
+    "successful"  => "tests/successful",
+    "unsuccessful" =>  "tests/failed",
   }
 
+  Results = "results"
+  ResultsExpected = Results + "/expected"
+  ResultPre = "run_"
   ResultExt = ".result"
+
+  def initialize()
+    @time = DateTime.now.strftime("%Y.%m.%d-%H.%M.%S")
+  end
 
   def description() "" end
   def options() nil end
@@ -15,16 +24,26 @@ class Command
 
   def get_tests(path) Dir.glob(path + '/*').select{|f| File.extname(f) != ResultExt} end
   def get_unrun()
-    get_tests(Tests["unclassified"]).select{|f| not File.file?(get_file_result(f))}
+    get_tests(Tests["unclassified"]).select{|f| not File.file?(get_file_expected_result(f))}
   end
   def get_unclassified()
-    get_tests(Tests["unclassified"]).select{|f| File.file?(get_file_result(f))}
+    get_tests(Tests["unclassified"]).select{|f| File.file?(get_file_expected_result(f))}
   end
   def get_successful() get_tests(Tests["successful"]) end
   def get_unsuccessful() get_tests(Tests["unsuccessful"]) end
   def get_all() get_unrun() + get_unclassified() + get_successful() + get_unsuccessful() end
 
-  def get_file_result(path) path + ResultExt end
+  def get_file_expected_result(path) ResultsExpected + "/" + File.basename(path) + ResultExt end
+
+  # Get the last results directory
+  def get_last_result_path()
+    runs = Dir.new(Results).select{|f| File.fnmatch(ResultPre + "*", f)}
+    runs.sort.last
+  end
+
+  # Get the output results directory
+  def get_result_out_path() Results + "/" + ResultPre + @time + "/" end
+  def get_file_result_out_path(path) get_result_out_path() + File.basename(path) + ResultExt end
 end
 
 class CommandResults < Command
@@ -41,6 +60,7 @@ class CommandResults < Command
 
   def run(args, commands)
     verbose = args[1] == "-v"
+    printf "Latest results: %s\n", get_last_result_path()
     print_results_for("Unrun Tests", get_unrun(), verbose)
     print_results_for("Unclassified Tests", get_unclassified(), verbose)
     print_results_for("Successful Tests", get_successful(), verbose)
@@ -109,12 +129,14 @@ class CommandRun < Command
       puts "Running new tests..."
       tests = get_unrun()
     end
+    # Create the results directory
+    results_dir = get_result_out_path()
+    Dir.mkdir results_dir, 0777
+
+    # Run the tests and write out the results
     tests.select{|t|
-      puts t
       result = eval_script t, nil
-      puts result
-      # TODO -- check result
-      # TODO -- write out result
+      write_result t, result
     }
     puts "Done."
   end
@@ -124,12 +146,8 @@ class CommandRun < Command
     eval(File.read(filename), proc.binding, filename)
   end
 
-  def check_result filename
-    # TODO
-  end
-
   def write_result filename, result
-    output = File.open(get_file_result(filename))
+    output = File.open(get_file_result_out_path(filename), "w+")
     output << result
     output.close
   end
