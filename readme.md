@@ -29,7 +29,7 @@ help:  Shows the help prompt.
 run: Run the unclassified tests.
     all: Run all the tests.
     failed: Run just the failed tests.
-    unclassified: Run just the failed tests.
+    unclassified: Run just the unclassified tests.
 
 results: Print the test results.
     -v: Verbose file printing.
