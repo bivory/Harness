@@ -1,0 +1,153 @@
+% ./harness.rb                                              bryanivory@breadbox
+=== VALID HARNESS COMMANDS ===
+classify: Classify a result.
+   ex: classify success <file>
+   ex: classify success
+	success: Mark test successful.
+	failed: Mark test failed.
+run: Run the unclassified tests.
+	all: Run all the tests.
+	failed: Run just the failed tests.
+	unclassified: Run just the failed tests.
+	new: Run just the new tests (default).
+results: Print the test results.
+	-v: Verbose file printing.
+help: Print this help message.
+
+# 1. Run all of your tests.
+±|master ✘| harness
+% ./harness.rb run                                          bryanivory@breadbox
+Running all tests...
+Done.
+
+# 2. Run a report that shows the tests are all unclassified.
+±|master ✘| harness
+% ./harness.rb results -v                                   bryanivory@breadbox
+Latest results: results/run_2013.05.06-20.07.13
+Unclassified Tests (3)
+tests/my_date.rb-friday_test
+tests/my_date.rb-thursday_test
+tests/my_date.rb-wednesday_test
+
+Successful Tests (0)
+
+Unsuccessful Tests (0)
+
+Unrun Tests (0)
+
+Total (3)
+
+# 3. Classify the tests. There should be at least one passing and one failing.
+% ./harness.rb classify failed tests/my_date.rb-friday_test bryanivory@breadbox
+Marking tests as unsuccessful...
+
+±|master ✘| harness
+% ./harness.rb results                                      bryanivory@breadbox
+Latest results: results/run_2013.05.06-20.07.13
+Unclassified Tests (2)
+Successful Tests (0)
+Unsuccessful Tests (1)
+Unrun Tests (0)
+Total (3)
+
+% ./harness.rb classify success                             bryanivory@breadbox
+Marking tests as successful...
+
+±|master ✘| harness
+% ./harness.rb results -v                                   bryanivory@breadbox
+Latest results: results/run_2013.05.06-20.07.13
+Unclassified Tests (0)
+
+Successful Tests (2)
+tests/my_date.rb-thursday_test
+tests/my_date.rb-wednesday_test
+
+Unsuccessful Tests (1)
+tests/my_date.rb-friday_test
+
+Unrun Tests (0)
+
+Total (3)
+
+# 4. Modify one of the failing tests to make it expect the correct results.
+# 5. Rerun all of your tests.
+±|master ✘| harness
+% ./harness.rb run                                          bryanivory@breadbox
+Running all tests...
+Done.
+
+# 6. Run a report that shows that one test changed.
+% ./harness.rb results -v                                   bryanivory@breadbox
+Latest results: results/run_2013.05.06-20.13.32
+Unclassified Tests (1)
+tests/my_date.rb-friday_test
+
+Successful Tests (2)
+tests/my_date.rb-thursday_test
+tests/my_date.rb-wednesday_test
+
+Unsuccessful Tests (0)
+
+Unrun Tests (0)
+
+Total (3)
+
+# 7. Classify the changed test appropriately.
+±|master ✘| harness
+% ./harness.rb classify success tests/my_date.rb-friday_test
+Marking tests as successful...
+
+% ./harness.rb results                                      bryanivory@breadbox
+Latest results: results/run_2013.05.06-20.13.32
+Unclassified Tests (0)
+Successful Tests (3)
+Unsuccessful Tests (0)
+Unrun Tests (0)
+Total (3)
+
+# 8. Rerun all of your tests.
+% ./harness.rb run all                                      bryanivory@breadbox
+Running all tests...
+Done.
+±|master ✘| harness
+
+# 9. Run a report showing that nothing changed.
+% ./harness.rb results                                      bryanivory@breadbox
+Latest results: results/run_2013.05.06-20.14.58
+Unclassified Tests (0)
+Successful Tests (3)
+Unsuccessful Tests (0)
+Unrun Tests (0)
+Total (3)
+
+% tree .                                                    bryanivory@breadbox
+
+├── files
+│   ├── my_date.rb
+│   └── my_name.rb
+├── harness.rb
+├── results
+│   ├── expected
+│   │   ├── my_date.rb-friday_test.result
+│   │   ├── my_date.rb-thursday_test.result
+│   │   └── my_date.rb-wednesday_test.result
+│   ├── run_2013.05.06-20.07.13
+│   │   ├── my_date.rb-friday_test.failedresult
+│   │   ├── my_date.rb-thursday_test.result
+│   │   └── my_date.rb-wednesday_test.result
+│   ├── run_2013.05.06-20.13.32
+│   │   ├── my_date.rb-friday_test.result
+│   │   ├── my_date.rb-thursday_test.result
+│   │   └── my_date.rb-wednesday_test.result
+│   └── run_2013.05.06-20.14.58
+│       ├── my_date.rb-friday_test.result
+│       ├── my_date.rb-thursday_test.result
+│       └── my_date.rb-wednesday_test.result
+├── results.txt
+├── tests
+│   ├── my_date.rb-friday_test
+│   ├── my_date.rb-thursday_test
+│   └── my_date.rb-wednesday_test
+└── workflow.txt
+
+7 directories, 20 files
