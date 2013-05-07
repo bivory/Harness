@@ -25,26 +25,32 @@ class Command
   }
   end
   def get_last_run_tests() get_tests.select{|f| File.file?(get_last_result(f))} end
+  def get_unrun() get_tests.reject{|f|
+    File.file?(get_last_result(f)) or File.file?(get_last_failed_result(f))
+  }
+  end
 
   def get_last_run_test_results() get_tests.select {|f| File.exists?(get_file_expected_result(f))} end
   def get_last_run_test_failed_results() get_tests.select {|f| File.exists?(get_last_failed_result(f))} end
   def classify_test(f)
       result = get_last_result(f)
       expected = get_file_expected_result(f)
-      if File.exists?(result) and File.exists?(expected) then
-        FileUtils.compare_file(expected, result)
+      if not File.exists?(result) then
+        :unrun
+      elsif not File.exists?(expected) then
+        :unclassified
       else
-        false
+        FileUtils.compare_file(expected, result)
       end
   end
-  def get_successful() get_last_run_test_results.select{|f| classify_test f} end
+  def get_successful() get_last_run_test_results.select{|f| classify_test(f) == true} end
   def get_unsuccessful()
-    unexpected = get_last_run_test_results.reject{|f| classify_test f}
+    unexpected = get_last_run_test_results.select{|f| classify_test(f) == false}
     marked_failed = get_last_run_test_failed_results
     unexpected | marked_failed
   end
 
-  def get_all() get_unclassified() + get_successful() + get_unsuccessful() end
+  def get_all() get_unrun() + get_unclassified() + get_successful() + get_unsuccessful() end
 
   def get_file_expected_result(path) ResultsExpected + "/" + File.basename(path) + ResultExt end
 
@@ -96,6 +102,7 @@ class CommandResults < Command
     print_results_for("Unclassified Tests", get_unclassified(), verbose)
     print_results_for("Successful Tests", get_successful(), verbose)
     print_results_for("Unsuccessful Tests", get_unsuccessful(), verbose)
+    print_results_for("Unrun Tests", get_unrun(), verbose)
     printf "Total (%d)\n", get_all().length
   end
 end
