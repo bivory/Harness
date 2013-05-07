@@ -97,11 +97,15 @@ class CommandClassify < Command
   end
 
   def run(args, commands)
+    if get_last_result_path() == nil then
+      puts "There are no results. Please run the tests first."
+      return
+    end
     case
     when args[1] == "success"
       puts "Marking tests as successful..."
     when args[1] == "failed"
-      puts "Marking tests as successful..."
+      puts "Marking tests as unsuccessful..."
     else
       puts "Please specify success or failed."
       return
@@ -111,9 +115,11 @@ class CommandClassify < Command
     else
       files = args.drop 2
     end
-    tests.select{|t|
-      puts t
-      # TODO
+    files.select{|f|
+      result = get_last_result f
+      if args[1] == "success" then
+        FileUtils.copy(result, get_file_expected_result(f))
+      end
     }
   end
 end
