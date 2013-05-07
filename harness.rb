@@ -155,8 +155,7 @@ class CommandRun < Command
   def options() {
     "all" => "Run all the tests.",
     "failed" => "Run just the failed tests.",
-    "unclassified" => "Run just the failed tests.",
-    "new" => "Run just the new tests (default)."
+    "unclassified" => "Run just the failed tests."
   }
   end
 
