@@ -9,6 +9,7 @@ class Command
   ResultsExpected = Results + "/expected"
   ResultPre = "run_"
   ResultExt = ".result"
+  FailedResultExt = ".failedresult"
 
   def initialize()
     @time = DateTime.now.strftime("%Y.%m.%d-%H.%M.%S")
@@ -19,10 +20,14 @@ class Command
   def run() end
 
   def get_tests(path=Tests) Dir.glob(path + '/*').select{|f| File.extname(f) != ResultExt} end
-  def get_unclassified() get_tests.reject{|f| File.file?(get_file_expected_result(f))} end
+  def get_unclassified() get_tests.reject{|f|
+    File.file?(get_file_expected_result(f)) or File.exists?(get_last_failed_result(f))
+  }
+  end
   def get_last_run_tests() get_tests.select{|f| File.file?(get_last_result(f))} end
 
   def get_last_run_test_results() get_tests.select {|f| File.exists?(get_file_expected_result(f))} end
+  def get_last_run_test_failed_results() get_tests.select {|f| File.exists?(get_last_failed_result(f))} end
   def classify_test(f)
       result = get_last_result(f)
       expected = get_file_expected_result(f)
@@ -33,7 +38,11 @@ class Command
       end
   end
   def get_successful() get_last_run_test_results.select{|f| classify_test f} end
-  def get_unsuccessful() get_last_run_test_results.reject{|f| classify_test f} end
+  def get_unsuccessful()
+    unexpected = get_last_run_test_results.reject{|f| classify_test f}
+    marked_failed = get_last_run_test_failed_results
+    unexpected | marked_failed
+  end
 
   def get_all() get_unclassified() + get_successful() + get_unsuccessful() end
 
@@ -50,6 +59,13 @@ class Command
       ""
     else
       get_last_result_path + "/" + File.basename(path) + ResultExt
+    end
+  end
+  def get_last_failed_result(path)
+    if get_last_result_path.nil?
+      ""
+    else
+      get_last_result_path + "/" + File.basename(path) + FailedResultExt
     end
   end
 
@@ -119,6 +135,8 @@ class CommandClassify < Command
       result = get_last_result f
       if args[1] == "success" then
         FileUtils.copy(result, get_file_expected_result(f))
+      else
+        FileUtils.move(result, get_last_failed_result(f))
       end
     }
   end
@@ -187,10 +205,10 @@ end
 
 class Harness
   Commands = {
-    "classify" => CommandClassify.new(),
-    "run" => CommandRun.new(),
-    "results" => CommandResults.new(),
-    "help"    => CommandHelp.new()
+    "classify"  => CommandClassify.new(),
+    "run"       => CommandRun.new(),
+    "results"   => CommandResults.new(),
+    "help"      => CommandHelp.new()
   }
 
   def run(args)
