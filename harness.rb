@@ -1,14 +1,10 @@
 #!/usr/bin/env ruby
 
 require "date"
+require "fileutils"
 
 class Command
-  Tests = {
-    "unclassified" => "tests/unclassified",
-    "successful"  => "tests/successful",
-    "unsuccessful" =>  "tests/failed",
-  }
-
+  Tests = "tests"
   Results = "results"
   ResultsExpected = Results + "/expected"
   ResultPre = "run_"
@@ -22,24 +18,30 @@ class Command
   def options() nil end
   def run() end
 
-  def get_tests(path) Dir.glob(path + '/*').select{|f| File.extname(f) != ResultExt} end
-  def get_unrun()
-    get_tests(Tests["unclassified"]).select{|f| not File.file?(get_file_expected_result(f))}
+  def get_tests(path=Tests) Dir.glob(path + '/*').select{|f| File.extname(f) != ResultExt} end
+  def get_unclassified() get_tests.reject{|f| File.file?(get_file_expected_result(f))} end
+  def get_last_run_tests() get_tests.select{|f| File.file?(get_last_result(f))} end
+
+  def get_last_run_test_results() get_tests.select {|f| File.exists?(get_file_expected_result(f))} end
+  def classify_test(f)
+      result = get_last_result(f)
+      expected = get_file_expected_result(f)
+      FileUtils.compare_file(expected, result)
   end
-  def get_unclassified()
-    get_tests(Tests["unclassified"]).select{|f| File.file?(get_file_expected_result(f))}
-  end
-  def get_successful() get_tests(Tests["successful"]) end
-  def get_unsuccessful() get_tests(Tests["unsuccessful"]) end
-  def get_all() get_unrun() + get_unclassified() + get_successful() + get_unsuccessful() end
+  def get_successful() get_last_run_test_results.select{|f| classify_test f} end
+  def get_unsuccessful() get_last_run_test_results.reject{|f| classify_test f} end
+
+  def get_all() get_unclassified() + get_successful() + get_unsuccessful() end
 
   def get_file_expected_result(path) ResultsExpected + "/" + File.basename(path) + ResultExt end
 
   # Get the last results directory
   def get_last_result_path()
     runs = Dir.new(Results).select{|f| File.fnmatch(ResultPre + "*", f)}
-    runs.sort.last
+    latest = runs.sort.last
+    if latest.nil? then "" else Results + "/" + runs.sort.last end
   end
+  def get_last_result(path) get_last_result_path + "/" + File.basename(path) + ResultExt end
 
   # Get the output results directory
   def get_result_out_path() Results + "/" + ResultPre + @time + "/" end
@@ -61,7 +63,6 @@ class CommandResults < Command
   def run(args, commands)
     verbose = args[1] == "-v"
     printf "Latest results: %s\n", get_last_result_path()
-    print_results_for("Unrun Tests", get_unrun(), verbose)
     print_results_for("Unclassified Tests", get_unclassified(), verbose)
     print_results_for("Successful Tests", get_successful(), verbose)
     print_results_for("Unsuccessful Tests", get_unsuccessful(), verbose)
@@ -116,9 +117,6 @@ class CommandRun < Command
 
   def run(args, commands)
     case
-    when args[1] == "all"
-      puts "Running all tests..."
-      tests = get_all()
     when args[1] == "failed"
       puts "Running failed tests..."
       tests = get_unsuccessful()
@@ -126,8 +124,8 @@ class CommandRun < Command
       puts "Running unclassified tests..."
       tests = get_unclassified()
     else
-      puts "Running new tests..."
-      tests = get_unrun()
+      puts "Running all tests..."
+      tests = get_all()
     end
     # Create the results directory
     results_dir = get_result_out_path()
