@@ -26,7 +26,11 @@ class Command
   def classify_test(f)
       result = get_last_result(f)
       expected = get_file_expected_result(f)
-      FileUtils.compare_file(expected, result)
+      if File.exists?(result) and File.exists?(expected) then
+        FileUtils.compare_file(expected, result)
+      else
+        false
+      end
   end
   def get_successful() get_last_run_test_results.select{|f| classify_test f} end
   def get_unsuccessful() get_last_run_test_results.reject{|f| classify_test f} end
@@ -39,9 +43,15 @@ class Command
   def get_last_result_path()
     runs = Dir.new(Results).select{|f| File.fnmatch(ResultPre + "*", f)}
     latest = runs.sort.last
-    if latest.nil? then "" else Results + "/" + runs.sort.last end
+    if latest.nil? then nil else Results + "/" + runs.sort.last end
   end
-  def get_last_result(path) get_last_result_path + "/" + File.basename(path) + ResultExt end
+  def get_last_result(path)
+    if get_last_result_path.nil?
+      ""
+    else
+      get_last_result_path + "/" + File.basename(path) + ResultExt
+    end
+  end
 
   # Get the output results directory
   def get_result_out_path() Results + "/" + ResultPre + @time + "/" end
@@ -61,8 +71,12 @@ class CommandResults < Command
   end
 
   def run(args, commands)
+    if get_last_result_path() == nil then
+      puts "There are no results. Please run the tests first."
+      return
+    end
     verbose = args[1] == "-v"
-    printf "Latest results: %s\n", get_last_result_path()
+    printf "Latest results: %s\n", get_last_result_path
     print_results_for("Unclassified Tests", get_unclassified(), verbose)
     print_results_for("Successful Tests", get_successful(), verbose)
     print_results_for("Unsuccessful Tests", get_unsuccessful(), verbose)
